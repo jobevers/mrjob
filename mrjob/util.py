@@ -374,40 +374,8 @@ def read_file(path, fileobj=None, yields_lines=True, cleanup=None):
     :param cleanup: Optional callback to call with no arguments when EOF is
                     reached or an exception is thrown.
     """
-    # sometimes values declared in the ``try`` block aren't accessible from the
-    # ``finally`` block. not sure why.
-    f = None
-    try:
-        # open path if we need to
-        if fileobj is None:
-            f = open(path, 'rb')
-        else:
-            f = fileobj
-
-        if path.endswith('.gz'):
-            lines = to_lines(gunzip_stream(f))
-        elif path.endswith('.bz2'):
-            if bz2 is None:
-                raise Exception('bz2 module was not successfully imported'
-                                ' (likely not installed).')
-            else:
-                lines = to_lines(bunzip2_stream(f))
-        else:
-            if yields_lines:
-                lines = f
-            else:
-                # handle boto.s3.Key, which yields chunks of bytes, not lines
-                lines = to_lines(f)
-
-        for line in lines:
-            yield line
-    finally:
-        try:
-            if f and f is not fileobj:
-                f.close()
-        finally:
-            if cleanup:
-                cleanup()
+    file_reader = FileReader()
+    return file_reader(path, fileobj, yields_lines, cleanup)
 
 
 def read_input(path, stdin=None):
@@ -691,3 +659,46 @@ def unarchive(archive_path, dest):
                         dest_file.write(archive.read(name))
     else:
         raise IOError('Unknown archive type: %s' % (archive_path,))
+
+
+class FileReader(object):
+    def is_compressed(self, path, f):
+        return path.endswith('.gz') or path.endswith('.bz2')
+
+    def decompress(self, path, f):
+        if path.endswith('.gz'):
+            return to_lines(gunzip_stream(f))
+        elif path.endswith('.bz2'):
+            if bz2 is None:
+                raise Exception('bz2 module was not successfully imported'
+                                ' (likely not installed).')
+            else:
+                return to_lines(bunzip2_stream(f))
+
+    def __call__(self, path, fileobj=None, yields_lines=True, cleanup=None):
+        # sometimes values declared in the ``try`` block aren't accessible from the
+        # ``finally`` block. not sure why.
+        f = None
+        try:
+            # open path if we need to
+            if fileobj is None:
+                f = open(path, 'rb')
+            else:
+                f = fileobj
+            if self.is_compressed(path, f):
+                lines = self.decompress(path, f)
+            else:
+                if yields_lines:
+                    lines = f
+                else:
+                    # handle boto.s3.Key, which yields chunks of bytes, not lines
+                    lines = to_lines(f)
+            for line in lines:
+                yield line
+        finally:
+            try:
+                if f and f is not fileobj:
+                    f.close()
+            finally:
+                if cleanup:
+                    cleanup()
