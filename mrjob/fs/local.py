@@ -17,7 +17,7 @@ import shutil
 
 from mrjob.fs.base import Filesystem
 from mrjob.parse import is_uri
-from mrjob.util import read_file
+
 
 log = logging.getLogger(__name__)
 
@@ -41,8 +41,9 @@ class LocalFilesystem(Filesystem):
             else:
                 yield path
 
-    def _cat_file(self, filename):
-        return read_file(filename)
+    def _cat_file(self, filename, reader=None):
+        reader = reader or self.get_default_reader()
+        return reader(filename)
 
     def mkdir(self, path):
         if not os.path.isdir(path):

@@ -67,8 +67,8 @@ class CompositeFilesystem(Filesystem):
     def ls(self, path_glob):
         return self._do_action('ls', path_glob)
 
-    def _cat_file(self, path):
-        for line in self._do_action('_cat_file', path):
+    def _cat_file(self, path, reader=None):
+        for line in self._do_action('_cat_file', path, reader):
             yield line
 
     def mkdir(self, path):

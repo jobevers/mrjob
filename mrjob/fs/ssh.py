@@ -20,7 +20,6 @@ from mrjob.ssh import ssh_cat
 from mrjob.ssh import ssh_ls
 from mrjob.ssh import SSH_PREFIX
 from mrjob.ssh import SSH_URI_RE
-from mrjob.util import read_file
 
 
 log = logging.getLogger(__name__)
@@ -87,7 +86,8 @@ class SSHFilesystem(Filesystem):
     def md5sum(self, path):
         raise IOError()  # not implemented
 
-    def _cat_file(self, filename):
+    def _cat_file(self, filename, reader=None):
+        reader = reader or self.get_default_reader()
         ssh_match = SSH_URI_RE.match(filename)
         addr = ssh_match.group('hostname') or self._address_of_master()
         if '!' in addr and self.ssh_key_name is None:
@@ -99,7 +99,7 @@ class SSHFilesystem(Filesystem):
             ssh_match.group('filesystem_path'),
             self.ssh_key_name,
         )
-        return read_file(filename, fileobj=BytesIO(output))
+        return reader(filename, fileobj=BytesIO(output))
 
     def mkdir(self, dest):
         raise IOError()  # not implemented

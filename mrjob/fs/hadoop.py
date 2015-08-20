@@ -25,7 +25,6 @@ from mrjob.py2 import to_string
 from mrjob.parse import is_uri
 from mrjob.parse import urlparse
 from mrjob.util import cmd_line
-from mrjob.util import read_file
 
 
 log = logging.getLogger(__name__)
@@ -167,8 +166,9 @@ class HadoopFilesystem(Filesystem):
             else:
                 yield hdfs_prefix + path
 
-    def _cat_file(self, filename):
+    def _cat_file(self, filename, reader=None):
         # stream from HDFS
+        reader = reader or self.get_default_reader()
         cat_args = self._hadoop_bin + ['fs', '-cat', filename]
         log.debug('> %s' % cmd_line(cat_args))
 
@@ -178,16 +178,13 @@ class HadoopFilesystem(Filesystem):
             # there shouldn't be any stderr
             for line in cat_proc.stderr:
                 log.error('STDERR: ' + line)
-
             cat_proc.stdout.close()
             cat_proc.stderr.close()
-
             returncode = cat_proc.wait()
-
             if returncode != 0:
                 raise IOError("Could not stream %s" % filename)
 
-        return read_file(filename, cat_proc.stdout, cleanup=cleanup)
+        return reader(filename, cat_proc.stdout, cleanup=cleanup)
 
     def mkdir(self, path):
         try:

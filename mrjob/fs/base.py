@@ -13,6 +13,8 @@
 # limitations under the License.
 import logging
 
+from mrjob import util
+
 
 log = logging.getLogger(__name__)
 
@@ -34,10 +36,14 @@ class Filesystem(object):
     * :py:class:`mrjob.fs.ssh.SSHFilesystem`: ``ssh://hostname/path``
     """
 
-    def cat(self, path_glob):
+    def get_default_reader(self):
+        return util.FileReader()
+
+    def cat(self, path_glob, reader=None):
         """cat all files matching **path_glob**, decompressing if necessary"""
+        reader = reader or self.get_default_reader()
         for filename in self.ls(path_glob):
-            for line in self._cat_file(filename):
+            for line in self._cat_file(filename, reader):
                 yield line
 
     def du(self, path_glob):
@@ -57,7 +63,7 @@ class Filesystem(object):
         """
         raise NotImplementedError
 
-    def _cat_file(self, path):
+    def _cat_file(self, path, reader=None):
         raise NotImplementedError
 
     def mkdir(self, path):

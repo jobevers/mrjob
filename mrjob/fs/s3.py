@@ -31,7 +31,7 @@ from mrjob.parse import parse_s3_uri
 from mrjob.parse import urlparse
 from mrjob.retry import RetryWrapper
 from mrjob.runner import GLOB_RE
-from mrjob.util import read_file
+from mrjob import util
 
 
 log = logging.getLogger(__name__)
@@ -151,12 +151,15 @@ class S3Filesystem(Filesystem):
         k = self.get_s3_key(path)
         return k.etag.strip('"')
 
-    def _cat_file(self, filename):
+    def get_default_reader(self):
+        return util.FileReader()
+
+    def _cat_file(self, filename, reader=None):
         # stream lines from the s3 key
+        reader = reader or self.get_default_reader()
         s3_key = self.get_s3_key(filename)
-        # yields_lines=False: warn read_file that s3_key yields chunks of bytes
-        return read_file(
-            s3_key_to_uri(s3_key), fileobj=s3_key, yields_lines=False)
+        # yields_lines=False: warn that s3_key yields chunks of bytes
+        return reader(s3_key_to_uri(s3_key), fileobj=s3_key, yields_lines=False)
 
     def mkdir(self, dest):
         """Make a directory. This does nothing on S3 because there are
