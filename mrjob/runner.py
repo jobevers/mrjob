@@ -266,7 +266,7 @@ class MRJobRunner(object):
                  extra_args=None, file_upload_args=None,
                  hadoop_input_format=None, hadoop_output_format=None,
                  input_paths=None, output_dir=None, partitioner=None,
-                 stdin=None, **opts):
+                 stdin=None, fs_factory=None, **opts):
         """All runners take the following keyword arguments:
 
         :type mr_job_script: str
@@ -397,6 +397,8 @@ class MRJobRunner(object):
         # store partitioner
         self._partitioner = partitioner
 
+        self._fs_factory = fs_factory or LocalFilesystem
+
         # store hadoop input and output formats
         self._hadoop_input_format = hadoop_input_format
         self._hadoop_output_format = hadoop_output_format
@@ -426,7 +428,7 @@ class MRJobRunner(object):
         0.6.0, but **this behavior is deprecated.**
         """
         if self._fs is None:
-            self._fs = LocalFilesystem()
+            self._fs = self._fs_factory()
         return self._fs
 
     def __getattr__(self, name):

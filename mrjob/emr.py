@@ -521,6 +521,8 @@ class EMRJobRunner(MRJobRunner):
         A lengthy list of additional options can be found in
         :doc:`guides/emr-opts.rst`.
         """
+        if 'fs_factory' not in kwargs:
+            kwargs['fs_factory'] = self._fs_factory
         super(EMRJobRunner, self).__init__(**kwargs)
 
         # if we're going to create a bucket to use as temp space, we don't
@@ -700,31 +702,25 @@ class EMRJobRunner(MRJobRunner):
     def _ssh_key_name(self):
         return self._job_key + '.pem'
 
-    @property
-    def fs(self):
-        """:py:class:`~mrjob.fs.base.Filesystem` object for SSH, S3, and the
-        local filesystem.
-        """
-        if self._fs is None:
-            self._s3_fs = S3Filesystem(
-                aws_access_key_id=self._opts['aws_access_key_id'],
-                aws_secret_access_key=self._opts['aws_secret_access_key'],
-                aws_security_token=self._opts['aws_security_token'],
-                s3_endpoint=self._opts['s3_endpoint'])
+    def use_ssh_fs(self):
+        return self._opts['ec2_key_pair_file']
 
-            if self._opts['ec2_key_pair_file']:
-                self._ssh_fs = SSHFilesystem(
-                    ssh_bin=self._opts['ssh_bin'],
-                    ec2_key_pair_file=self._opts['ec2_key_pair_file'],
-                    key_name=self._ssh_key_name)
+    def _fs_factory(self):
+        s3_fs = S3Filesystem(
+            aws_access_key_id=self._opts['aws_access_key_id'],
+            aws_secret_access_key=self._opts['aws_secret_access_key'],
+            aws_security_token=self._opts['aws_security_token'],
+            s3_endpoint=self._opts['s3_endpoint'])
 
-                self._fs = CompositeFilesystem(self._ssh_fs, self._s3_fs,
-                                               LocalFilesystem())
-            else:
-                self._ssh_fs = None
-                self._fs = CompositeFilesystem(self._s3_fs, LocalFilesystem())
+        if self.use_ssh_fs():
+            ssh_fs = SSHFilesystem(
+                ssh_bin=self._opts['ssh_bin'],
+                ec2_key_pair_file=self._opts['ec2_key_pair_file'],
+                key_name=self._ssh_key_name)
 
-        return self._fs
+            return CompositeFilesystem(ssh_fs, s3_fs, LocalFilesystem())
+        else:
+            return CompositeFilesystem(s3_fs, LocalFilesystem())
 
     def _run(self):
         self._launch()
@@ -984,7 +980,7 @@ class EMRJobRunner(MRJobRunner):
             random.setstate(random_state)
 
     def _enable_slave_ssh_access(self):
-        if self._ssh_fs and not self._ssh_key_is_copied:
+        if self.use_ssh_fs() and not self._ssh_key_is_copied:
             ssh_copy_key(
                 self._opts['ssh_bin'],
                 self._address_of_master(),
