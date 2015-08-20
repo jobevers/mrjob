@@ -397,7 +397,7 @@ class MRJobRunner(object):
         # store partitioner
         self._partitioner = partitioner
 
-        self._fs_factory = fs_factory or LocalFilesystem
+        self._fs_factory = fs_factory or lambda opts: LocalFilesystem()
 
         # store hadoop input and output formats
         self._hadoop_input_format = hadoop_input_format
@@ -428,7 +428,7 @@ class MRJobRunner(object):
         0.6.0, but **this behavior is deprecated.**
         """
         if self._fs is None:
-            self._fs = self._fs_factory()
+            self._fs = self._fs_factory(self._opts)
         return self._fs
 
     def __getattr__(self, name):

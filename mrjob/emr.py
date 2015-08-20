@@ -705,7 +705,7 @@ class EMRJobRunner(MRJobRunner):
     def use_ssh_fs(self):
         return self._opts['ec2_key_pair_file']
 
-    def _fs_factory(self):
+    def _fs_factory(self, _):
         s3_fs = S3Filesystem(
             aws_access_key_id=self._opts['aws_access_key_id'],
             aws_secret_access_key=self._opts['aws_secret_access_key'],
