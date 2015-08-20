@@ -990,6 +990,7 @@ class EMRJobRunner(MRJobRunner):
                 self._address_of_master(),
                 self._opts['ec2_key_pair_file'],
                 self._ssh_key_name)
+            self._ssh_key_is_copied = True
 
     ### Running the job ###
 
